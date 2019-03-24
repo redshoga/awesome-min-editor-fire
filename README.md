@@ -1,4 +1,4 @@
-# awesome-min-editor
+# awesome-min-editor-fire
 📝Easy-to-use text editor, written by easy-to-read short pure✨ JavaScript code. 
 You can edit with friends to use same address.
 
