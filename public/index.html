@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Awesome Min Editor🔥</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flexboxgrid/6.3.1/flexboxgrid.min.css" />
+  <link href="https://fonts.googleapis.com/css?family=Sawarabi+Gothic" rel="stylesheet">
+  <script defer src="/__/firebase/5.9.1/firebase-app.js"></script>
+  <script defer src="/__/firebase/5.9.1/firebase-database.js"></script>
+  <script defer src="/__/firebase/init.js"></script>
+
+  <style>
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      background-color: #f0f0f0;
+    }
+
+    #highlights, #textarea {
+      width: 100%;
+      height: 100%;
+    }
+
+    #highlights, #textarea {
+      position: absolute;
+      text-align: left;
+      margin: 0;
+      border: 0;
+      padding: 16px;
+      font-size: 18px;
+      font-family: "Sawarabi Gothic";
+      line-height: 30px;
+      color: #333;
+      overflow: auto;
+      resize: none;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    #highlights {
+      z-index: 1;
+      color: transparent;
+      /* color: gray; */
+    }
+    #textarea {
+      background-color: transparent;
+      border-color: transparent;
+      outline-color: transparent;
+      position: absolute;
+      z-index: 2;
+    }
+
+    /* highlights */
+    .marking {
+      background-color: rgba(255, 0, 0, 0.2);
+    }
+    .strikethrough {
+      background: linear-gradient(transparent 0%, transparent 50%, #888 50%, #888 70%, transparent 70%, transparent 100%);
+    }
+    .underline {
+      background: linear-gradient(transparent 0%, transparent 75%, rgba(0, 255, 0, 0.3) 75%, rgba(0, 255, 0, 0.3) 100%);
+    }
+    .heading {
+      display: inline-block;
+      width: 100%;
+      border-bottom: 1px solid #555;
+    }
+    .link {
+      color: transparent;
+      background-color: rgba(0, 0, 255, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="row center-xs center-sm center-md">
+    <div id="highlights" class="col-xs-12 col-sm-10 col-md-6"></div>
+    <textarea id="textarea" class="col-xs-12 col-sm-10 col-md-6">loading...</textarea>
+  </div>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const highlightsElement = document.getElementById("highlights");
+      const textAreaElement = document.getElementById("textarea");
+      let linkIsClickable = false;
+
+      const applyHighlights = (text) => {
+        const inputText = text;
+        let returnText = text;
+
+        const replacer = "FppU3MiW6S"
+        const replacePattern = [
+          { regexp: /^#.*?$/gm, replaceStr: `<span class="heading">${replacer}</span>` },
+          { regexp: /https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{2,256}\.[a-z]{2,6}\b([-a-zA-Z0-9@:%_\+.~#?&\/\/=]*)/gi, replaceStr: `<a href='${replacer}' class='link' target='_blank'>${replacer}</a>` },
+          { regexp: /\[.*?\]/g, replaceStr: `<span class="marking">${replacer}</span>` },
+          { regexp: /\-.*?\-/g, replaceStr: `<span class="strikethrough">${replacer}</span>` },
+          { regexp: /_.*?_/g, replaceStr: `<span class="underline">${replacer}</span>` },
+        ]
+
+        replacePattern.forEach(rule => {
+          returnText = returnText.replace(rule.regexp, rule.replaceStr)
+        })
+
+        let tmpText = inputText;
+        replacePattern.forEach(rule => {
+          const matchArray = tmpText.match(rule.regexp)
+
+          if (!matchArray) return;
+          
+          matchArray.forEach(matchStr => {
+            let changeText = rule.replaceStr.replace(RegExp(replacer, "g"), matchStr);
+            returnText = returnText.replace(rule.replaceStr, changeText)
+          });
+        })
+
+        return returnText;
+      }
+
+      const handleInput = (event) => {
+        const textAreaText = textAreaElement.value;
+        if (event) {
+          databaseRef.set({
+            text: textAreaText
+          });
+        }
+        highlightsElement.innerHTML = applyHighlights(textAreaText);
+      }
+
+      // Sync scroll 
+      const handleScroll = () => {
+        let sourceElement = textAreaElement;
+        let targetElement = highlightsElement;
+
+        if (linkIsClickable) {
+          sourceElement = highlightsElement;
+          targetElement = textAreaElement;
+        }
+
+        targetElement.scrollTo(sourceElement.scrollTop, sourceElement.scrollLeft)
+      }
+
+      const setNormalMode = () => {
+        linkIsClickable = false;
+        textAreaElement.style["pointer-events"] = "auto";
+      }
+
+      const setClickableMode = () => {
+        linkIsClickable = true;
+        textAreaElement.style["pointer-events"] = "none";
+      }
+
+      // Set event
+      document.onkeydown = (event) => { 
+        if (event.key === "Control") setClickableMode();
+      }
+      document.onkeyup = (event) => { 
+        if (event.key === "Control") setNormalMode();
+      }
+      document.addEventListener('webkitvisibilitychange', () => {
+        setNormalMode();
+      }, false);
+      textAreaElement.addEventListener('scroll', handleScroll);
+      highlightsElement.addEventListener('scroll', handleScroll);
+      textAreaElement.addEventListener('input', handleInput);
+
+      // Init id and database
+      let pageId = location.search.trim().replace("/", "").slice(1);
+      if (pageId.length === 0) {
+        pageId = Math.random().toString(36).slice(-8);
+        history.replaceState('','',`/?${pageId}`);
+      }
+      // pageId = "SampleId"
+      const databaseRef = firebase.database().ref(`${pageId}/text`);
+
+      // Init
+      handleInput(undefined);
+      setNormalMode();
+
+      databaseRef.on('value', snapshot => {
+        const val = snapshot.val()
+        if (val) {
+          textAreaElement.value = val.text;
+        } else {
+          textAreaElement.value = `# Initialized!
+[You can edit] with -colleagues- friends by _share_ following address. 
+${location.href}`;
+        }
+        handleInput();
+      });
+    });
+  </script>
+</body>
+</html>
